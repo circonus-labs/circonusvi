@@ -22,9 +22,8 @@ token = config.get('tokens', account, None)
 
 api = circonusapi.CirconusAPI(token)
 
-if len (sys.argv) > 1:
-    endpoints = sys.argv[1:]
-else:
+endpoints = args
+if not endpoints:
     endpoints = ['broker', 'contact_group']
 
 # Combined output to be serialized
