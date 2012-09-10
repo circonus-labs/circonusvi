@@ -14,13 +14,18 @@ config.read(os.path.expanduser('~/.circusrc'))
 
 
 account = config.get('general', 'default_account', None)
-opts, args = getopt.gnu_getopt(sys.argv[1:], "a:")
+debug = False
+opts, args = getopt.gnu_getopt(sys.argv[1:], "a:d")
 for o,a in opts:
     if o == '-a':
         account = a
+    if o == '-d':
+        debug = not debug
 token = config.get('tokens', account, None)
 
 api = circonusapi.CirconusAPI(token)
+if debug:
+    api.debug = True
 
 endpoints = args
 if not endpoints:
