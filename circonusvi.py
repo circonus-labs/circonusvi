@@ -58,13 +58,13 @@ for i in data_new:
     if i not in data:
         changes.append({'action': 'POST', 'data': data_new[i], 'endpoint': i})
         additions += 1
-    if data[i] != data_new[i]:
+    elif data[i] != data_new[i]:
         changes.append({'action': 'PUT', 'data': data_new[i], 
             'data_old': data[i], 'endpoint': i})
         edits += 1
 for i in data:
     if i not in data_new:
-        changes.append({'action': 'DELETE', 'data': data_new[i], 'endpoint': i})
+        changes.append({'action': 'DELETE', 'data': data[i], 'endpoint': i})
         deletions += 1
 
 def show_changes():
@@ -119,4 +119,7 @@ while True:
 
 for c in changes:
     print "Making API Call: %s %s" % (c['action'], c['endpoint'])
+    if c['action'] == 'DELETE':
+        # We don't send any data along for deletions
+        c['data'] = None
     api.api_call(c['action'], c['endpoint'], c['data'])
