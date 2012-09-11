@@ -4,6 +4,7 @@ import getopt
 import json
 import os
 import subprocess
+import re
 import sys
 import tempfile
 
@@ -12,30 +13,80 @@ import circonusapi
 config = ConfigParser.SafeConfigParser()
 config.read(os.path.expanduser('~/.circusrc'))
 
+def usage():
+    print "Usage:"
+    print sys.argv[0], "[options] [PATTERN]"
+    print
+    print "Pattern should be of the form key=pattern, where key is what you"
+    print "want to match on (such as target), and pattern is a regular"
+    print "expression. If any returned piece of data doesn't have the key"
+    print "(e.g. rules don't have targets), then it doesn't match"
+    print
+    print "  -a -- Specify which account to use"
+    print "  -d -- Enable debug mode"
+    print "  -e -- Specify endpoints to search (can be used multiple times)"
 
 account = config.get('general', 'default_account', None)
 debug = False
-opts, args = getopt.gnu_getopt(sys.argv[1:], "a:d")
+endpoints = []
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:?")
+except getopt.GetoptError, err:
+    # print help information and exit:
+    print str(err) # will print something like "option -a not recognized"
+    usage()
+    sys.exit(2)
+
 for o,a in opts:
     if o == '-a':
         account = a
     if o == '-d':
         debug = not debug
-token = config.get('tokens', account, None)
+    if o == '-e':
+        endpoints.append(a)
+    if o == '-?':
+        usage()
+        sys.exit(0)
 
+token = config.get('tokens', account, None)
 api = circonusapi.CirconusAPI(token)
 if debug:
     api.debug = True
 
-endpoints = args
 if not endpoints:
-    endpoints = ['broker', 'contact_group']
+    # user, account are missing from here
+    # TODO - it's probably a good idea to pick only commonly used endpoints by
+    # default here, or perhaps make it configurable.
+    endpoints = ['broker', 'check_bundle', 'contact_group', 'graph',
+            'rule_set', 'template', 'worksheet']
 
 # Combined output to be serialized
 data = {}
 
 for t in endpoints:
     data.update(dict(((i['_cid'], i) for i in api.api_call("GET", t))))
+
+# Filter based on the pattern
+patterns = []
+for p in args:
+    parts = p.split('=', 1)
+    if len(parts) != 2:
+        print "Invalid pattern: %s" % p
+        usage()
+        sys.exit(2)
+    patterns.append(parts)
+
+filtered_data = {}
+for i in data:
+    matched = True
+    for k, p in patterns:
+        if k not in data[i]:
+            break
+        if not re.match(p, data[i][k]):
+            break
+    else:
+        filtered_data[i] = data[i]
+data = filtered_data
 
 tmp = tempfile.mkstemp()
 fh = os.fdopen(tmp[0], 'w')
