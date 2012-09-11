@@ -100,7 +100,8 @@ def show_changes():
             os.remove(new_file[1])
         else:
             print "Data:"
-            print c['data']
+            print json.dumps(c['data'], sort_keys=True,
+                    indent=4, separators=(',',': '))
 
 if not changes:
     print "No Changes. Exiting."
