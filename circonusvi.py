@@ -56,14 +56,20 @@ deletions = 0
 edits = 0
 for i in data_new:
     if i not in data:
-        changes.append({'action': 'POST', 'data': data_new[i], 'endpoint': i})
+        # Addition
+        # We need to make sure the endpoint doesn't contain an ID (just in
+        # case the entry contains one)
+        changes.append({'action': 'POST', 'data': data_new[i],
+            'endpoint': re.sub("(?!^)/.*", "", i)})
         additions += 1
     elif data[i] != data_new[i]:
+        # Edit
         changes.append({'action': 'PUT', 'data': data_new[i], 
             'data_old': data[i], 'endpoint': i})
         edits += 1
 for i in data:
     if i not in data_new:
+        # Delete
         changes.append({'action': 'DELETE', 'data': data[i], 'endpoint': i})
         deletions += 1
 
