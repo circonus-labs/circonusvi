@@ -27,6 +27,14 @@ def usage():
     print "  -e -- Specify endpoints to search (can be used multiple times)"
     print "  -E -- Specify an alternate editor to use (default: $EDITOR)"
 
+def confirm(text="OK to continue?"):
+    response = None
+    while response not in ['Y', 'y', 'N', 'n']:
+        response = raw_input("%s (y/n) " % text)
+    if response in ['Y', 'y']:
+        return True
+    return False
+
 account = config.get('general', 'default_account', None)
 debug = False
 endpoints = []
@@ -97,11 +105,19 @@ fh = os.fdopen(tmp[0], 'w')
 json.dump(data, fh, sort_keys=True, indent=4, separators=(',',': '))
 fh.close()
 
-subprocess.call([editor, tmp[1]])
+ok = False
+while not ok:
+    subprocess.call([editor, tmp[1]])
 
-fh = open(tmp[1])
-data_new = json.load(fh)
-fh.close()
+    fh = open(tmp[1])
+    try:
+        data_new = json.load(fh)
+        ok = True
+    except ValueError, e:
+        print "Error parsing JSON:", e
+        if not confirm("Do you want to edit the file again?"):
+            sys.exit(1)
+    fh.close()
 
 os.remove(tmp[1])
 
