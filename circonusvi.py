@@ -25,12 +25,14 @@ def usage():
     print "  -a -- Specify which account to use"
     print "  -d -- Enable debug mode"
     print "  -e -- Specify endpoints to search (can be used multiple times)"
+    print "  -E -- Specify an alternate editor to use (default: $EDITOR)"
 
 account = config.get('general', 'default_account', None)
 debug = False
 endpoints = []
+editor = os.environ.get('EDITOR', 'vi')
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:?")
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:E:?")
 except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -44,6 +46,8 @@ for o,a in opts:
         debug = not debug
     if o == '-e':
         endpoints.append(a)
+    if o == '-E':
+        editor = a
     if o == '-?':
         usage()
         sys.exit(0)
@@ -93,7 +97,7 @@ fh = os.fdopen(tmp[0], 'w')
 json.dump(data, fh, sort_keys=True, indent=4, separators=(',',': '))
 fh.close()
 
-subprocess.call(["vim", tmp[1]])
+subprocess.call([editor, tmp[1]])
 
 fh = open(tmp[1])
 data_new = json.load(fh)
