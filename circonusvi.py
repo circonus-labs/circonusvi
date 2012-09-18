@@ -196,8 +196,14 @@ while True:
         print "? - Help"
 
 for c in changes:
-    print "Making API Call: %s %s" % (c['action'], c['endpoint'])
+    print "Making API Call: %s %s ..." % (c['action'], c['endpoint']),
     if c['action'] == 'DELETE':
         # We don't send any data along for deletions
         c['data'] = None
-    api.api_call(c['action'], c['endpoint'], c['data'])
+    try:
+        api.api_call(c['action'], c['endpoint'], c['data'])
+    except circonusapi.CirconusAPIError, e:
+        print "Error"
+        print "    %s" % e
+        continue
+    print "Success"
