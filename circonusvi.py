@@ -94,7 +94,7 @@ for i in data:
     for k, p in patterns:
         if k not in data[i]:
             break
-        if not re.match(p, data[i][k]):
+        if not re.search(p, data[i][k]):
             break
     else:
         filtered_data[i] = data[i]
