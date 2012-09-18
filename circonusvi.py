@@ -100,7 +100,7 @@ for i in data:
         filtered_data[i] = data[i]
 data = filtered_data
 
-tmp = tempfile.mkstemp()
+tmp = tempfile.mkstemp(suffix='.json')
 fh = os.fdopen(tmp[0], 'w')
 json.dump(data, fh, sort_keys=True, indent=4, separators=(',',': '))
 fh.close()
