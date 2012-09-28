@@ -27,6 +27,7 @@ def usage():
     print "  -d -- Enable debug mode"
     print "  -e -- Specify endpoints to search (can be used multiple times)"
     print "  -E -- Specify an alternate editor to use (default: $EDITOR)"
+    print "  -u -- include underscore entries (e.g. _cid) in json output"
 
 def confirm(text="OK to continue?"):
     response = None
@@ -40,12 +41,13 @@ options = {
     'account': config.get('general', 'default_account', None),
     'debug': False,
     'endpoints': [],
-    'editor': os.environ.get('EDITOR', 'vi')
+    'editor': os.environ.get('EDITOR', 'vi'),
+    'include_underscore': False
 }
 
 def parse_options():
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:E:?")
+        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:E:u?")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -61,6 +63,8 @@ def parse_options():
             options['endpoints'].append(a)
         if o == '-E':
             options['editor'] = a
+        if o == '-u':
+            options['include_underscore'] = not options['include_underscore']
         if o == '-?':
             usage()
             sys.exit(0)
@@ -218,10 +222,18 @@ def make_changes(changes):
             continue
         print "Success"
 
+def strip_underscore_keys(data):
+    for k in data.keys():
+        for l in data[k].keys():
+            if l[0] == '_':
+                del data[k][l]
+
 if __name__ == '__main__':
     args = parse_options()
     api = get_api()
     data = get_circonus_data(api, args)
+    if not options['include_underscore']:
+        strip_underscore_keys(data)
     data_new = edit_file(data)
     changes = calculate_changes(data, data_new)
     if confirm_changes(changes):
