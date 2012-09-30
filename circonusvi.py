@@ -87,11 +87,7 @@ def get_api():
 
 def get_circonus_data(api, args):
     if not options['endpoints']:
-        # user, account are missing from here TODO - it's probably a good idea
-        # to pick only commonly used endpoints by default here, or perhaps
-        # make it configurable.
-        options['endpoints'] = ['broker', 'check_bundle', 'contact_group',
-                'graph', 'rule_set', 'template', 'worksheet']
+        options['endpoints'] = ['check_bundle']
 
     # Combined output to be serialized
     data = {}
