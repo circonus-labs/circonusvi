@@ -22,6 +22,14 @@ options = {
     'include_underscore': False
 }
 
+class Enum(set):
+    def __getattr__(self, name):
+        if name in self:
+            return name
+        raise AttributeError
+
+actions = Enum(["REEDIT", "PROCEED", "EXIT"])
+
 def usage():
     print "Usage:"
     print sys.argv[0], "[options] [PATTERN]"
@@ -112,17 +120,18 @@ def get_circonus_data(api, args):
             filtered_data[i] = data[i]
     return filtered_data
 
-def edit_file(data):
+def create_json_file(data):
     tmp = tempfile.mkstemp(suffix='.json')
     fh = os.fdopen(tmp[0], 'w')
     json.dump(data, fh, sort_keys=True, indent=4, separators=(',',': '))
     fh.close()
+    return tmp[1]
 
+def edit_json_file(filename):
     ok = False
     while not ok:
-        subprocess.call([options['editor'], tmp[1]])
-
-        fh = open(tmp[1])
+        subprocess.call([options['editor'], filename])
+        fh = open(filename)
         try:
             data_new = json.load(fh,
                     object_pairs_hook=json_pairs_hook_dedup_keys)
@@ -132,8 +141,6 @@ def edit_file(data):
             if not confirm("Do you want to edit the file again?"):
                 sys.exit(1)
         fh.close()
-
-    os.remove(tmp[1])
     return data_new
 
 def calculate_changes(data, data_new):
@@ -196,17 +203,20 @@ def confirm_changes(changes):
             counts['POST'], counts['DELETE'], counts['PUT'])
     response = None
     while True:
-        response = raw_input("Do you want to proceed? (YyNnSs?) ")
+        response = raw_input("Do you want to proceed? (YyNnEeSs?) ")
         if response in ['Y', 'y']:
-            return True
+            return actions.PROCEED
         if response in ['N', 'n']:
-            return False
+            return actions.EXIT
+        if response in ['E', 'e']:
+            return actions.REEDIT
         if response in ['S', 's']:
             show_changes(changes)
         if response in ['?']:
             print "Y - Proceed"
             print "N - Quit"
             print "S - Show changes"
+            print "E - Re-edit the file"
             print "? - Help"
 
 def make_changes(changes):
@@ -253,10 +263,17 @@ if __name__ == '__main__':
     data = get_circonus_data(api, args)
     if not options['include_underscore']:
         strip_underscore_keys(data)
-    data_new = edit_file(data)
-    changes = calculate_changes(data, data_new)
-    if confirm_changes(changes):
-        make_changes(changes)
-    else:
-        print "Exiting"
-        sys.exit(1)
+    editing = True
+    filename = create_json_file(data)
+    while editing:
+        data_new = edit_json_file(filename)
+        editing = False
+        changes = calculate_changes(data, data_new)
+        next_action = confirm_changes(changes)
+        if next_action == actions.REEDIT:
+            editing = True
+        elif next_action == actions.PROCEED:
+            make_changes(changes)
+        else:
+            print "Not proceeding"
+    os.remove(filename)
