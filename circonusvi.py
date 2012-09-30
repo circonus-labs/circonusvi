@@ -14,6 +14,14 @@ import circonusapi
 config = ConfigParser.SafeConfigParser()
 config.read(os.path.expanduser('~/.circusrc'))
 
+options = {
+    'account': config.get('general', 'default_account', None),
+    'debug': False,
+    'endpoints': [],
+    'editor': os.environ.get('EDITOR', 'vi'),
+    'include_underscore': False
+}
+
 def usage():
     print "Usage:"
     print sys.argv[0], "[options] [PATTERN]"
@@ -36,14 +44,6 @@ def confirm(text="OK to continue?"):
     if response in ['Y', 'y']:
         return True
     return False
-
-options = {
-    'account': config.get('general', 'default_account', None),
-    'debug': False,
-    'endpoints': [],
-    'editor': os.environ.get('EDITOR', 'vi'),
-    'include_underscore': False
-}
 
 def parse_options():
     try:
