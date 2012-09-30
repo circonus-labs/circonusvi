@@ -124,7 +124,8 @@ def edit_file(data):
 
         fh = open(tmp[1])
         try:
-            data_new = json.load(fh)
+            data_new = json.load(fh,
+                    object_pairs_hook=json_pairs_hook_dedup_keys)
             ok = True
         except ValueError, e:
             print "Error parsing JSON:", e
@@ -227,6 +228,24 @@ def strip_underscore_keys(data):
         for l in data[k].keys():
             if l[0] == '_':
                 del data[k][l]
+
+def json_pairs_hook_dedup_keys(data):
+    # json decoder object_pairs_hook that allows duplicate keys, and makes
+    # any duplicate keys unique by appending /x1, /x1 and so on to the end.
+    # This is used when adding new items via the circonus api, you can just
+    # specify /check_bundle multiple times as the endpoint and won't get an
+    # error about duplicate keys when decoding the json. Separate code
+    # elsewhere automatically strips off the /x1 when selecting the endpoint
+    # to use for adding entries.
+    d = {}
+    ctr = 0
+    for k,v in data:
+        oldk = k
+        while k in d:
+            ctr += 1
+            k = "%s/x%s" % (oldk, ctr)
+        d[k] = v
+    return d
 
 if __name__ == '__main__':
     args = parse_options()
