@@ -6,7 +6,11 @@ to the server.
 
 ## Requirements
 
- * circonusapi module
+ * circonusapi: https://github.com/omniti-labs/circonusapi
+
+Run the following to install dependencies:
+
+    pip install -r requirements.txt
 
 ## Configuration
 
