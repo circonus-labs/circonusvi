@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import collections
-import ConfigParser
 import getopt
 import json
 import os
@@ -9,13 +8,13 @@ import re
 import sys
 import tempfile
 
-import circonusapi
+from circonusapi import circonusapi
+from circonusapi import config
 
-config = ConfigParser.SafeConfigParser()
-config.read(os.path.expanduser('~/.circusrc'))
+conf = config.load_config()
 
 options = {
-    'account': config.get('general', 'default_account', None),
+    'account': conf.get('general', 'default_account', None),
     'debug': False,
     'endpoints': [],
     'editor': os.environ.get('EDITOR', 'vi'),
@@ -79,7 +78,7 @@ def parse_options():
     return args
 
 def get_api():
-    token = config.get('tokens', options['account'], None)
+    token = conf.get('tokens', options['account'], None)
     api = circonusapi.CirconusAPI(token)
     if options['debug']:
         api.debug = True
