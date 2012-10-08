@@ -3,6 +3,7 @@ import collections
 import getopt
 import json
 import os
+import pickle
 import subprocess
 import re
 import sys
@@ -12,9 +13,14 @@ from circonusapi import circonusapi
 from circonusapi import config
 
 conf = config.load_config()
+if not conf.has_section('circonusvi'):
+    conf.add_section('circonusvi')
 
 options = {
     'account': conf.get('general', 'default_account', None),
+    'cache_file': os.path.expanduser(conf.get('circonusvi', 'cachefile',
+        vars = {'cachefile': '~/.circonusvi.cache'})),
+    'add_comments': True,
     'debug': False,
     'endpoints': [],
     'editor': os.environ.get('EDITOR', 'vi'),
@@ -39,6 +45,7 @@ def usage():
     print "(e.g. rules don't have targets), then it doesn't match"
     print
     print "  -a -- Specify which account to use"
+    print "  -c -- Don't resolve /broker/XXXX and add json 'comments'"
     print "  -d -- Enable debug mode"
     print "  -e -- Specify endpoints to search (can be used multiple times)"
     print "  -E -- Specify an alternate editor to use (default: $EDITOR)"
@@ -54,7 +61,7 @@ def confirm(text="OK to continue?"):
 
 def parse_options():
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:de:E:u?")
+        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:cde:E:u?")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -64,6 +71,8 @@ def parse_options():
     for o,a in opts:
         if o == '-a':
             options['account'] = a
+        if o == '-c':
+            options['add_comments'] = not options['add_comments']
         if o == '-d':
             options['debug'] = not options['debug']
         if o == '-e':
@@ -115,6 +124,49 @@ def get_circonus_data(api, args):
             filtered_data[i] = data[i]
     return filtered_data
 
+def load_cache(filename):
+    if not os.path.exists(filename):
+        return {}
+    with open(filename, "rb") as fh:
+        return pickle.load(fh)
+
+def save_cache(filename, cache):
+    with open(filename, "wb") as fh:
+        pickle.dump(cache, fh, pickle.HIGHEST_PROTOCOL)
+
+def update_cache(api, cache, endpoint):
+    data = cache.setdefault(endpoint, {})
+    data.update(dict(((i['_cid'], i) for i in api.api_call("GET", endpoint))))
+
+def get_cache(api, cache, endpoint, value):
+    if endpoint not in cache or value not in cache[endpoint]:
+        update_cache(api, cache, endpoint)
+    if value in cache[endpoint]:
+        return cache[endpoint][value]
+    else:
+        return None
+
+def add_human_readable_comments(api, cache, filename):
+    # Which endpoints do we resolve, and what are the human readable names?
+    endpoints = {
+        "broker": "_name",
+        "user": "email"
+    }
+    fh = open(filename)
+    lines = fh.readlines()
+    fh.close()
+    for i in range(0, len(lines)):
+        for e in endpoints:
+            match = re.search("\"(/%s/[0-9]+)\"" % e, lines[i])
+            if match:
+                lines[i] = "%s# %s\n%s" % (
+                        re.match("^( *)", lines[i]).group(1),
+                        get_cache(api, cache, e, match.group(1))[endpoints[e]],
+                        lines[i])
+    fh = open(filename, "w")
+    fh.writelines(lines)
+    fh.close()
+
 def create_json_file(data):
     tmp = tempfile.mkstemp(suffix='.json')
     fh = os.fdopen(tmp[0], 'w')
@@ -127,8 +179,14 @@ def edit_json_file(filename):
     while not ok:
         subprocess.call([options['editor'], filename])
         fh = open(filename)
+        data = []
+        for line in fh:
+            if re.match(" *#", line):
+                continue
+            data.append(line)
+        fh.close()
         try:
-            data_new = json.load(fh,
+            data_new = json.loads(''.join(data),
                     object_pairs_hook=json_pairs_hook_dedup_keys)
             ok = True
         except ValueError, e:
@@ -255,11 +313,15 @@ def json_pairs_hook_dedup_keys(data):
 if __name__ == '__main__':
     args = parse_options()
     api = get_api()
+    cache = load_cache(options['cache_file'])
     data = get_circonus_data(api, args)
     if not options['include_underscore']:
         strip_underscore_keys(data)
     editing = True
     filename = create_json_file(data)
+    if options['add_comments']:
+        add_human_readable_comments(api, cache, filename)
+        save_cache(options['cache_file'], cache)
     while editing:
         data_new = edit_json_file(filename)
         editing = False
