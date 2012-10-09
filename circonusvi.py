@@ -22,7 +22,8 @@ options = {
     'debug': False,
     'endpoints': [],
     'editor': os.environ.get('EDITOR', 'vi'),
-    'include_underscore': False
+    'include_underscore': False,
+    'reuse_last_query': False
 }
 
 # Allow overriding of any option in the config file
@@ -58,6 +59,7 @@ def usage():
     print "  -d -- Enable debug mode"
     print "  -e -- Specify endpoints to search (can be used multiple times)"
     print "  -E -- Specify an alternate editor to use (default: $EDITOR)"
+    print "  -l -- Don't query the API. Instead use the previous query results"
     print "  -u -- include underscore entries (e.g. _cid) in json output"
 
 def confirm(text="OK to continue?"):
@@ -70,7 +72,7 @@ def confirm(text="OK to continue?"):
 
 def parse_options():
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:cde:E:u?")
+        opts, args = getopt.gnu_getopt(sys.argv[1:], "a:cde:E:lu?")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -88,6 +90,8 @@ def parse_options():
             options['endpoints'].append(a)
         if o == '-E':
             options['editor'] = a
+        if o == '-l':
+            options['reuse_last_query'] = not options['reuse_last_query']
         if o == '-u':
             options['include_underscore'] = not options['include_underscore']
         if o == '-?':
@@ -102,7 +106,7 @@ def get_api():
         api.debug = True
     return api
 
-def get_circonus_data(api, args):
+def get_circonus_data(api):
     if not options['endpoints']:
         options['endpoints'] = ['check_bundle']
 
@@ -112,6 +116,7 @@ def get_circonus_data(api, args):
     for t in options['endpoints']:
         data.update(dict(((i['_cid'], i) for i in api.api_call("GET", t))))
 
+def filter_circonus_data(data, args):
     # Filter based on the pattern
     patterns = []
     for p in args:
@@ -154,6 +159,12 @@ def get_cache(api, cache, endpoint, value):
         return cache[endpoint][value]
     else:
         return None
+
+def set_cache(cache, key, value):
+    cache[key] = value
+
+def get_cache_raw(cache, key):
+    return cache.get(key, None)
 
 def add_human_readable_comments(api, cache, filename):
     # Which endpoints do we resolve, and what are the human readable names?
@@ -324,7 +335,13 @@ if __name__ == '__main__':
     api = get_api()
     cache_file = os.path.expanduser(options['cache_file'])
     cache = load_cache(cache_file)
-    data = get_circonus_data(api, args)
+    if options['reuse_last_query']:
+        data = get_cache_raw(cache, '_last_query')
+    else:
+        data = get_circonus_data(api)
+        set_cache(cache, '_last_query', data)
+        save_cache(cache_file, cache)
+    data = filter_circonus_data(data, args)
     if not options['include_underscore']:
         strip_underscore_keys(data)
     editing = True
