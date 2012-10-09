@@ -35,9 +35,17 @@ https://circonus.com/user/tokens to set up a token.
  * Options are:
     * -a -- Specify which account to use
     * -d -- Enable debug mode
+    * -c -- Don't resolve /broker/XXXX and add json 'comments'. By default,
+      whenever an endpoint is encountered, it is resolved, and a friendly name
+      is added in a comment above the real result. This isn't valid json, and
+      comments are stripped before parsing. If you want to use the json
+      elsewhere, you will want to disable the adding of comment lines.
     * -e -- Specify endpoints to search (can be used multiple times for
       several endpoints at once)
     * -E -- Specify an alternate editor to use (default: $EDITOR)
+    * -l -- Don't query the API. Instead use the previous query results.
+      Filtering still works on the previous results. This is useful if
+      you made a mistake on the filter and want to fix it.
     * -u -- include underscore entries (e.g. \_cid) in json output. By default
       they are hidden.
  * If you don't specify a pattern, then all entries are returned.
