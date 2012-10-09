@@ -45,6 +45,35 @@ class Enum(set):
 
 actions = Enum(["REEDIT", "PROCEED", "EXIT"])
 
+
+class Cache(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.load()
+
+    def load(self):
+        if not os.path.exists(self.filename):
+            self.cache = {}
+        else:
+            with open(self.filename, "rb") as fh:
+                self.cache = pickle.load(fh)
+
+    def save(self):
+        with open(self.filename, "wb") as fh:
+            pickle.dump(self.cache, fh, pickle.HIGHEST_PROTOCOL)
+
+    def update(self, section, value):
+        self.cache.setdefault(section, {}).update(value)
+        self.save()
+
+    def set(self, section, key, value):
+        self.cache.setdefault(section, {})[key] = value
+        self.save()
+
+    def get(self, section, key):
+        return self.cache.get(section, {}).get(key, None)
+
+
 def usage():
     print "Usage:"
     print sys.argv[0], "[options] [PATTERN]"
@@ -116,6 +145,8 @@ def get_circonus_data(api):
     for t in options['endpoints']:
         data.update(dict(((i['_cid'], i) for i in api.api_call("GET", t))))
 
+    return data
+
 def filter_circonus_data(data, args):
     # Filter based on the pattern
     patterns = []
@@ -138,34 +169,6 @@ def filter_circonus_data(data, args):
             filtered_data[i] = data[i]
     return filtered_data
 
-def load_cache(filename):
-    if not os.path.exists(filename):
-        return {}
-    with open(filename, "rb") as fh:
-        return pickle.load(fh)
-
-def save_cache(filename, cache):
-    with open(filename, "wb") as fh:
-        pickle.dump(cache, fh, pickle.HIGHEST_PROTOCOL)
-
-def update_cache(api, cache, endpoint):
-    data = cache.setdefault(endpoint, {})
-    data.update(dict(((i['_cid'], i) for i in api.api_call("GET", endpoint))))
-
-def get_cache(api, cache, endpoint, value):
-    if endpoint not in cache or value not in cache[endpoint]:
-        update_cache(api, cache, endpoint)
-    if value in cache[endpoint]:
-        return cache[endpoint][value]
-    else:
-        return None
-
-def set_cache(cache, key, value):
-    cache[key] = value
-
-def get_cache_raw(cache, key):
-    return cache.get(key, None)
-
 def add_human_readable_comments(api, cache, filename):
     # Which endpoints do we resolve, and what are the human readable names?
     endpoints = {
@@ -179,9 +182,14 @@ def add_human_readable_comments(api, cache, filename):
         for e in endpoints:
             match = re.search("\"(/%s/[0-9]+)\"" % e, lines[i])
             if match:
+                resolved = cache.get(e, match.group(1))
+                if not resolved:
+                    cache.update(e, dict(
+                        ((i['_cid'], i) for i in api.api_call("GET", e))))
+                    resolved = cache.get(e, match.group(1))
                 lines[i] = "%s# %s\n%s" % (
                         re.match("^( *)", lines[i]).group(1),
-                        get_cache(api, cache, e, match.group(1))[endpoints[e]],
+                        resolved[endpoints[e]],
                         lines[i])
     fh = open(filename, "w")
     fh.writelines(lines)
@@ -334,13 +342,12 @@ if __name__ == '__main__':
     args = parse_options()
     api = get_api()
     cache_file = os.path.expanduser(options['cache_file'])
-    cache = load_cache(cache_file)
+    cache = Cache(cache_file)
     if options['reuse_last_query']:
-        data = get_cache_raw(cache, '_last_query')
+        data = cache.get('_query', 'last')
     else:
         data = get_circonus_data(api)
-        set_cache(cache, '_last_query', data)
-        save_cache(cache_file, cache)
+        cache.set('_query', 'last', data)
     data = filter_circonus_data(data, args)
     if not options['include_underscore']:
         strip_underscore_keys(data)
@@ -348,7 +355,6 @@ if __name__ == '__main__':
     filename = create_json_file(data)
     if options['add_comments']:
         add_human_readable_comments(api, cache, filename)
-        save_cache(cache_file, cache)
     while editing:
         data_new = edit_json_file(filename)
         editing = False
