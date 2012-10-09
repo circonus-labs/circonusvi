@@ -17,15 +17,24 @@ if not conf.has_section('circonusvi'):
     conf.add_section('circonusvi')
 
 options = {
-    'account': conf.get('general', 'default_account', None),
-    'cache_file': os.path.expanduser(conf.get('circonusvi', 'cachefile',
-        vars = {'cachefile': '~/.circonusvi.cache'})),
+    'cache_file': '~/.circonusvi.cache',
     'add_comments': True,
     'debug': False,
     'endpoints': [],
     'editor': os.environ.get('EDITOR', 'vi'),
     'include_underscore': False
 }
+
+# Allow overriding of any option in the config file
+for k in options:
+    if conf.has_option('circonusvi', k):
+        if type(options[k] == bool):
+            options[k] = conf.getboolean('circonusvi', k)
+        else:
+            options[k] = conf.get('circonusvi', k)
+
+# Find the default account
+options['account'] = conf.get('general', 'default_account')
 
 class Enum(set):
     def __getattr__(self, name):
@@ -313,7 +322,8 @@ def json_pairs_hook_dedup_keys(data):
 if __name__ == '__main__':
     args = parse_options()
     api = get_api()
-    cache = load_cache(options['cache_file'])
+    cache_file = os.path.expanduser(options['cache_file'])
+    cache = load_cache(cache_file)
     data = get_circonus_data(api, args)
     if not options['include_underscore']:
         strip_underscore_keys(data)
@@ -321,7 +331,7 @@ if __name__ == '__main__':
     filename = create_json_file(data)
     if options['add_comments']:
         add_human_readable_comments(api, cache, filename)
-        save_cache(options['cache_file'], cache)
+        save_cache(cache_file, cache)
     while editing:
         data_new = edit_json_file(filename)
         editing = False
