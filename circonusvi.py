@@ -173,7 +173,8 @@ def add_human_readable_comments(api, cache, filename):
     # Which endpoints do we resolve, and what are the human readable names?
     endpoints = {
         "broker": "_name",
-        "user": "email"
+        "user": "email",
+        "contact_group": "name"
     }
     fh = open(filename)
     lines = fh.readlines()
