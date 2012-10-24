@@ -188,10 +188,11 @@ def add_human_readable_comments(api, cache, filename):
                     cache.update(e, dict(
                         ((i['_cid'], i) for i in api.api_call("GET", e))))
                     resolved = cache.get(e, match.group(1))
-                lines[i] = "%s# %s\n%s" % (
-                        re.match("^( *)", lines[i]).group(1),
-                        resolved[endpoints[e]],
-                        lines[i])
+                if resolved:
+                    lines[i] = "%s# %s\n%s" % (
+                            re.match("^( *)", lines[i]).group(1),
+                            resolved[endpoints[e]],
+                            lines[i])
     fh = open(filename, "w")
     fh.writelines(lines)
     fh.close()
