@@ -18,7 +18,7 @@ The API token is kept in .circonusapirc. Go to
 https://circonus.com/user/tokens to set up a token.
 
     [general]
-    account=foo
+    default_account=foo
 
     [tokens]
     foo=12345678-9abc-def0-123456789abcdef01
