@@ -1,1 +1,1 @@
-circonusapi==0.1.0
+circonusapi>=0.1.3
