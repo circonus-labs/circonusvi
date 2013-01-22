@@ -285,7 +285,9 @@ def confirm_changes(changes):
         print "No Changes. Exiting."
         sys.exit(1)
 
-    counts = collections.Counter((c['action'] for c in changes))
+    counts = collections.defaultdict(int)
+    for c in changes:
+        counts[c['action']] += 1
 
     print "%d additions, %d deletions, %d edits" % (
             counts['POST'], counts['DELETE'], counts['PUT'])
