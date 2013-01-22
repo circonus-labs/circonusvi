@@ -7,6 +7,9 @@ to the server.
 ## Requirements
 
  * circonusapi: https://github.com/omniti-labs/circonusapi
+ * Python 2.7
+ * Python 2.6 will work, but you need to install the simplejson module by
+   running `pip install simplejson`
 
 Run the following to install dependencies:
 
@@ -77,3 +80,12 @@ https://circonus.com/user/tokens to set up a token.
    'duration' in the name:
 
         ./circonusvi.py -e rule_set metric_name=duration
+
+# Problems
+
+ * I get the following error: `TypeError: __init__() got an unexpected keyword
+   argument 'object_pairs_hook'`.
+   * If you're using a python version earlier than 2.7, install the simplejson
+     package. Circonusvi makes use of some features of the json parser that
+     are new to Python 2.7, but earlier versions will work with simplejson
+     instead.

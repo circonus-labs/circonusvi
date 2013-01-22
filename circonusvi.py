@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 import collections
 import getopt
-import json
+try:
+    # Earlier versions of python don't support object_pairs_hook in json, so
+    # we need simplejson instead. Use it if it's available.
+    import simplejson as json
+except ImportError:
+    import json
 import os
 import pickle
 import subprocess
