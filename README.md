@@ -26,6 +26,12 @@ https://circonus.com/user/tokens to set up a token.
     [tokens]
     foo=12345678-9abc-def0-123456789abcdef01
 
+If you use circonus inside, you can add a `[hostnames]` section to specify the
+hostname for the circonus inside API. For example:
+
+    [hostnames]
+    foo=api.circonus.example.com
+
 ## Usage
 
  * General usage is:

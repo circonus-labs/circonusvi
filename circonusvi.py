@@ -134,8 +134,12 @@ def parse_options():
     return args
 
 def get_api():
-    token = conf.get('tokens', options['account'], None)
+    token = conf.get('tokens', options['account'])
     api = circonusapi.CirconusAPI(token)
+    # Support alternate hostnames for circonus inside
+    if conf.has_section('hostnames') and conf.has_option('hostnames',
+            options['account']):
+        api.hostname = conf.get('hostnames', options['account'])
     if options['debug']:
         api.debug = True
     return api
