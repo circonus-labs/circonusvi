@@ -41,6 +41,13 @@ hostname for the circonus inside API. For example:
    match on (such as target), and pattern is a regular expression. If any
    returned piece of data doesn't have the key (e.g. rules don't have
    targets), then it doesn't match
+ * To search on nested keys (such as a check configuration), separate the key
+   names with a underscore. E.g. to match on
+
+        { "config": { "code": "200" ... } ... }
+   (the above example is from a http check) you can use 'config_code=200'. If
+   you need to match on list items, use numbers for the key. 0 for the first
+   item, 1 for the second and so on.
  * Options are:
     * -a -- Specify which account to use
     * -d -- Enable debug mode

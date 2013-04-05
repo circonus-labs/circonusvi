@@ -156,6 +156,23 @@ def get_circonus_data(api):
 
     return data
 
+def flatten_dict(d):
+    """Flattens a dictionary/list combo into a 1-level dict.
+    Keys are compressed (e.g. {"a": {"b": 0}} becomes: {"a_b": 0}), and lists
+    are treated as dicts with numerical keys"""
+    scalars = ((k, v) for k, v in d.items() if type(v) not in [dict, list])
+    lists = ((k, v) for k, v in d.items() if type(v) == list)
+    dicts = [(k, v) for k, v in d.items() if type(v) == dict]
+    for l in lists:
+        dicts.append((l[0], dict(((k, v) for k, v in enumerate(l[1])))))
+    flattened = {}
+    flattened.update(scalars)
+    for key, d in dicts:
+        flattened_d = flatten_dict(d)
+        flattened.update(dict(("%s_%s" % (key, k), v) for k, v in
+            flattened_d.items()))
+    return flattened
+
 def filter_circonus_data(data, args):
     # Filter based on the pattern
     patterns = []
@@ -169,10 +186,11 @@ def filter_circonus_data(data, args):
 
     filtered_data = {}
     for i in data:
+        item = flatten_dict(data[i])
         for k, p in patterns:
-            if k not in data[i]:
+            if k not in item:
                 break
-            if not re.search(p, data[i][k]):
+            if not re.search(p, item[k]):
                 break
         else:
             filtered_data[i] = data[i]
