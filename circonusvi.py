@@ -54,14 +54,19 @@ actions = Enum(["REEDIT", "PROCEED", "EXIT"])
 class Cache(object):
     def __init__(self, filename):
         self.filename = filename
-        self.load()
+        self.cache = {}
 
     def load(self):
-        if not os.path.exists(self.filename):
-            self.cache = {}
-        else:
+        if os.path.exists(self.filename):
             with open(self.filename, "rb") as fh:
-                self.cache = pickle.load(fh)
+                try:
+                    self.cache = pickle.load(fh)
+                except:
+                    print "Error loading cache file. Exiting."
+                    sys.exit(1)
+        else:
+            print "No cache file found. Exiting."
+            sys.exit(1)
 
     def save(self):
         with open(self.filename, "wb") as fh:
@@ -375,6 +380,7 @@ if __name__ == '__main__':
     cache_file = os.path.expanduser(options['cache_file'])
     cache = Cache(cache_file)
     if options['reuse_last_query']:
+        cache.load()
         data = cache.get('_query', 'last')
     else:
         data = get_circonus_data(api)
