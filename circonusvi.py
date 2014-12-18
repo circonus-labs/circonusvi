@@ -141,7 +141,7 @@ def parse_options():
 def get_api():
     token = conf.get('tokens', options['account'])
     api = circonusapi.CirconusAPI(token)
-    api.appname = options['account']
+    api.appname = 'circonusvi'
     # Support alternate hostnames for circonus inside
     if conf.has_section('hostnames') and conf.has_option('hostnames',
             options['account']):
@@ -270,7 +270,7 @@ def calculate_changes(data, data_new):
                 'endpoint': re.sub("(?!^)/.*", "", i)})
         elif data[i] != data_new[i]:
             # Edit
-            changes.append({'action': 'PUT', 'data': data_new[i], 
+            changes.append({'action': 'PUT', 'data': data_new[i],
                 'data_old': data[i], 'endpoint': i})
     for i in data:
         if i not in data_new:
